@@ -1,0 +1,100 @@
+body {
+	background-color: #DDD;
+	background-image: url(background.svg);
+	color: #333;
+}
+footer {
+	text-align: center;
+	padding-top: 2em;
+}
+#loading,  #error {
+	content:'';
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	text-align: center;
+}
+#loading {
+	background: url(loading.gif) center center no-repeat white;
+	z-index: 10001;
+}
+#loading-message {
+	position: absolute;
+	top: 65%;
+	left: 0;
+	right: 0;
+}
+#error {
+	background: #A00;
+	color: black;
+	padding-top: 3em;
+	font-size: 40px;
+	z-index: 10000;
+}
+h1 {
+	margin-top: 0;
+}
+#list-select {
+	padding: 0.2em;
+	background-color: #AAA;
+	background-color: rgba(100,100,100,0.5);
+	border: solid 1px #555;
+	border-radius: 2px;
+}
+#list-select > select {
+	padding: 0.2em;
+	vertical-align: middle;
+}
+.list-group-item {
+	background-color: #DDD;
+	background-color: rgba(235,235,235, 0.5);
+}
+.modal {
+	display: block;
+	pointer-events: none;/*to allow clicking modal-backdrop*/
+}
+.modal-dialog {
+	pointer-events: auto;/*to allow clicking modal-backdrop*/
+}
+
+.present.offered .title, .present.offered p {
+	text-decoration: line-through;
+	color: grey;
+}
+.present .offered-by {
+	font-size: 0.7em;
+}
+.present > .buttons > a, .present > .buttons > .reorder {
+	margin-left: 0.5em;
+	cursor: pointer;
+}
+.present .reorder {
+	cursor: move;
+	display: inline-block;
+	vertical-align: top;
+	font-size: 2em;
+}
+#command-execution {
+	position: fixed;
+	top: 0;
+	left: 50%;
+	width: 300px;
+	margin-left: -150px;
+	text-align: center;
+	border-radius: 0px 0px 2px 2px;
+	box-shadow: 0px 0px 5px;
+	background: #FFF1A9;
+	padding: 0.1em 0.2em;
+}
+#command-execution > .loading {
+	font-style: italic;
+}
+#connected-user {
+	text-align: right;
+	position: absolute;
+	top: 0.4em;
+	right: 0.4em;
+	font-size: 14px;
+}
