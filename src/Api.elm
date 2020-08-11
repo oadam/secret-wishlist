@@ -2,7 +2,7 @@ module Api exposing (Token, authenticate)
 
 import Http
 import Process
-import Task
+import Task exposing (Task)
 
 
 type Token
@@ -16,14 +16,19 @@ type alias Credentials =
     }
 
 
+mockHttpGet : a -> Cmd (Result x a)
+mockHttpGet result =
+    Process.sleep 1500
+        |> Task.andThen (\_ -> Task.succeed result)
+        |> Task.perform Ok
+
+
 authenticate : Credentials -> (Result Http.Error Token -> msg) -> Cmd msg
 authenticate credentials toMsg =
     let
         tokenStringCommand =
             if credentials.demo then
-                Process.sleep 1500
-                    |> Task.andThen (\_ -> Task.succeed "demoTocken")
-                    |> Task.perform Ok
+                mockHttpGet "mockToken"
 
             else
                 Http.get
