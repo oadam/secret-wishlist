@@ -9,16 +9,27 @@ type Token
     = Token String
 
 
-authenticate : Bool -> String -> String -> (Result Http.Error Token -> msg) -> Cmd msg
-authenticate demo login password toMsg =
-    (if demo then
-        Process.sleep 1500
-            |> Task.perform (\_ -> Ok (Token "demoTocken"))
+type alias Credentials =
+    { demo : Bool
+    , login : String
+    , password : String
+    }
 
-     else
-        Http.get
-            { url = "https://elm-lang.org/assets/public-opinion.txt"
-            , expect = Http.expectString (\result -> Result.map Token result)
-            }
-    )
+
+authenticate : Credentials -> (Result Http.Error Token -> msg) -> Cmd msg
+authenticate credentials toMsg =
+    let
+        tokenStringCommand =
+            if credentials.demo then
+                Process.sleep 1500
+                    |> Task.andThen (\_ -> Task.succeed "demoTocken")
+                    |> Task.perform Ok
+
+            else
+                Http.get
+                    { url = "/api/login/"
+                    , expect = Http.expectString identity
+                    }
+    in
+    Cmd.map (\r -> Result.map (\t -> Token t) r) tokenStringCommand
         |> Cmd.map toMsg

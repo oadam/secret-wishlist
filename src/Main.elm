@@ -1,5 +1,6 @@
 module Main exposing (main)
 
+import Api
 import Browser exposing (UrlRequest)
 import Browser.Navigation exposing (Key)
 import Dict exposing (Dict)
