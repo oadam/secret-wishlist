@@ -31,5 +31,6 @@ authenticate credentials toMsg =
                     , expect = Http.expectString identity
                     }
     in
-    Cmd.map (\r -> Result.map (\t -> Token t) r) tokenStringCommand
+    tokenStringCommand
+        |> Cmd.map (Result.map Token)
         |> Cmd.map toMsg
