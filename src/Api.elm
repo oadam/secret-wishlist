@@ -18,19 +18,16 @@ mockHttpGet result toMsg =
 
 authenticate : ( String, String ) -> (Result Http.Error Token -> msg) -> Cmd msg
 authenticate ( login, password ) toMsg =
-    let
-        demo =
-            login == "demo"
-
-        -- partial application of Token
-        stringToToken =
-            Token demo
-    in
-    if demo then
+    if login == "demo" then
         mockHttpGet (Token True "mockToken") toMsg
 
     else
         Http.get
             { url = "/api/login/"
-            , expect = Http.expectString (Result.map stringToToken >> toMsg)
+
+            -- partial application of Token to obtain stringToTokenMapper
+            , expect =
+                Result.map (Token False)
+                    >> toMsg
+                    |> Http.expectString
             }
