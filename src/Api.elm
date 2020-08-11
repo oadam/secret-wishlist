@@ -9,11 +9,11 @@ type alias Token =
     { demo : Bool, token : String }
 
 
-mockHttpGet : a -> Cmd (Result x a)
-mockHttpGet result =
+mockHttpGet : a -> (Result Http.Error a -> msg) -> Cmd msg
+mockHttpGet result toMsg =
     Process.sleep 1500
-        |> Task.andThen (\_ -> Task.succeed result)
-        |> Task.perform Ok
+        |> Task.andThen (\_ -> Task.succeed (Ok result))
+        |> Task.perform toMsg
 
 
 authenticate : ( String, String ) -> (Result Http.Error Token -> msg) -> Cmd msg
@@ -22,20 +22,15 @@ authenticate ( login, password ) toMsg =
         demo =
             login == "demo"
 
+        -- partial application of Token
         stringToToken =
-            -- partial application of Token
             Token demo
-
-        tokenStringCommand =
-            if demo then
-                mockHttpGet "mockToken"
-
-            else
-                Http.get
-                    { url = "/api/login/"
-                    , expect = Http.expectString identity
-                    }
     in
-    tokenStringCommand
-        |> Cmd.map (Result.map stringToToken)
-        |> Cmd.map toMsg
+    if demo then
+        mockHttpGet (Token True "mockToken") toMsg
+
+    else
+        Http.get
+            { url = "/api/login/"
+            , expect = Http.expectString (Result.map stringToToken >> toMsg)
+            }
