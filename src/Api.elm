@@ -5,15 +5,8 @@ import Process
 import Task exposing (Task)
 
 
-type Token
-    = Token String
-
-
-type alias Credentials =
-    { demo : Bool
-    , login : String
-    , password : String
-    }
+type alias Token =
+    { demo : Bool, token : String }
 
 
 mockHttpGet : a -> Cmd (Result x a)
@@ -23,11 +16,18 @@ mockHttpGet result =
         |> Task.perform Ok
 
 
-authenticate : Credentials -> (Result Http.Error Token -> msg) -> Cmd msg
-authenticate credentials toMsg =
+authenticate : ( String, String ) -> (Result Http.Error Token -> msg) -> Cmd msg
+authenticate ( login, password ) toMsg =
     let
+        demo =
+            login == "demo"
+
+        stringToToken =
+            -- partial application of Token
+            Token demo
+
         tokenStringCommand =
-            if credentials.demo then
+            if demo then
                 mockHttpGet "mockToken"
 
             else
@@ -37,5 +37,5 @@ authenticate credentials toMsg =
                     }
     in
     tokenStringCommand
-        |> Cmd.map (Result.map Token)
+        |> Cmd.map (Result.map stringToToken)
         |> Cmd.map toMsg

@@ -5,6 +5,7 @@ import Debug
 import Html exposing (..)
 import Html.Attributes exposing (class, hidden, id, required, type_, value)
 import Html.Events exposing (onClick, onInput, onSubmit)
+import Http
 import TextHtml exposing (textHtml)
 
 
@@ -12,6 +13,7 @@ type Msg
     = Submit
     | UpdateLogin String
     | UpdatePassword String
+    | GotAuth (Result Http.Error Api.Token)
 
 
 type State
@@ -25,25 +27,15 @@ type alias Model =
     { login : String
     , password : String
     , user : String
-    , allUsers : List String
     , state : State
     }
 
 
-init : Bool -> Model
-init demo =
-    let
-        demoString =
-            if demo then
-                "demo"
-
-            else
-                ""
-    in
-    { login = demoString
-    , password = demoString
+init : Model
+init =
+    { login = ""
+    , password = ""
     , state = None
-    , allUsers = []
     , user = ""
     }
 
@@ -51,14 +43,22 @@ init demo =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        UpdatePassword password ->
-            ( { model | password = password }, Cmd.none )
+        GotAuth result ->
+            case result of
+                Ok token ->
+                    ( { model | state = Success }, Cmd.none )
+
+                Err _ ->
+                    ( { model | state = Error }, Cmd.none )
 
         UpdateLogin login ->
-            ( { model | login = login }, Cmd.none )
+            ( { model | login = login, state = None }, Cmd.none )
+
+        UpdatePassword password ->
+            ( { model | password = password, state = None }, Cmd.none )
 
         Submit ->
-            ( { model | state = Loading }, Cmd.none )
+            ( { model | state = Loading }, Api.authenticate ( model.login, model.password ) GotAuth )
 
 
 view : Model -> Html Msg
@@ -94,8 +94,8 @@ view model =
             ]
          ]
             ++ textHtml alert
-            ++ [ div [ class "form-group" ]
-                    [ button [ class "btn btn-primary", hidden (model.state == Success), type_ "submit" ]
+            ++ [ div [ class "form-group", hidden (model.state == Success) ]
+                    [ button [ class "btn btn-primary", type_ "submit" ]
                         [ text "Connexion" ]
                     ]
                ]

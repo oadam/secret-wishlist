@@ -26,22 +26,11 @@ type alias Present =
 
 
 type alias Model =
-    { presents : List Present
-    , navKey : Key
+    { navKey : Key
     , welcome : Bool
     , login : Login.Model
-    , demo : Bool
+    , token : Maybe Api.Token
     }
-
-
-demoPresents : List Present
-demoPresents =
-    [ { id = 1, title = "salut", body = "salut toi" }
-    , { id = 2, title = "hello", body = "salut toi" }
-    , { id = 3, title = "yo", body = "salut toi" }
-    , { id = 4, title = "lsdjflqksjf lqsjfdlkdsj", body = "salut toi" }
-    , { id = 5, title = "qlksjflk", body = "salut toi" }
-    ]
 
 
 type Msg
@@ -50,16 +39,14 @@ type Msg
     | LoginMsg Login.Msg
 
 
-init : { demo : Bool } -> Url -> Key -> ( Model, Cmd Msg )
+init : () -> Url -> Key -> ( Model, Cmd Msg )
 init flags url key =
-    ( { presents = demoPresents
-      , navKey = key
+    ( { navKey = key
       , welcome = True
-      , login = Login.init flags.demo
-      , demo = flags.demo
+      , login = Login.init
+      , token = Nothing
       }
     , Cmd.none
-      --, Browser.Navigation.pushUrl key "/0/"
     )
 
 
@@ -84,8 +71,16 @@ update message model =
             let
                 ( loginModel, loginCmd ) =
                     Login.update msg model.login
+
+                cmd =
+                    Cmd.map LoginMsg loginCmd
             in
-            ( { model | login = loginModel }, Cmd.map LoginMsg loginCmd )
+            case msg of
+                Login.GotAuth (Ok token) ->
+                    ( { model | login = loginModel, token = Just token }, cmd )
+
+                _ ->
+                    ( { model | login = loginModel }, cmd )
 
         Noop ->
             ( model, Cmd.none )
