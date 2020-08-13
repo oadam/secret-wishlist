@@ -9337,7 +9337,7 @@ var $author$project$Main$view = function (model) {
 				A2(
 				$elm$html$Html$footer,
 				_List_Nil,
-				$author$project$TextHtml$textHtml('<footer>Développé avec amour par <a href=\'https://github.com/oadam/\'>Olivier Adam</a></footer>'))
+				$author$project$TextHtml$textHtml('<p>Salut you</p><footer>Développé avec amour par <a href=\'https://github.com/oadam/\'>Olivier Adam</a></footer>'))
 			]),
 		title: A2(
 			$lukewestby$elm_string_interpolate$String$Interpolate$interpolate,
