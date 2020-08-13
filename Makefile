@@ -1,11 +1,12 @@
 EXECS=node_modules/.bin
 OUT=public
+VERSION=$(shell date -Iseconds)
 
 dev: $(OUT)/style.css $(OUT)/elm.js $(OUT)/assets
-	sed 's:CSS_HREF:style.css:; s:JS_HREF:elm.js:' web/index.html > $(OUT)/index.html
+	sed 's/CSS_HREF/style.css/; s/JS_HREF/elm.js/' web/index.html > $(OUT)/index.html
 
 prod: $(OUT)/style.min.css $(OUT)/elm.min.js $(OUT)/assets
-	sed 's:CSS_HREF:style.min.css:; s:JS_HREF:elm.min.js:' web/index.html > $(OUT)/index.html
+	sed 's/CSS_HREF/style.min.css?version=$(VERSION)/ ; s/JS_HREF/elm.min.js?version=$(VERSION)/' web/index.html > $(OUT)/index.html
 
 clean:
 	rm -r $(OUT)
