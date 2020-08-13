@@ -1,6 +1,6 @@
 EXECS=node_modules/.bin
 OUT=public
-VERSION=$(shell date -Iseconds)
+VERSION=$(shell date +"%s")
 
 dev: $(OUT)/style.css $(OUT)/elm.js $(OUT)/assets
 	sed 's/CSS_HREF/style.css/; s/JS_HREF/elm.js/' web/index.html > $(OUT)/index.html
