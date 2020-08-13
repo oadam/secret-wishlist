@@ -6,8 +6,9 @@
 
 ### dev
 
-    make watch & make serve
-    # navigate to localhost:8000/index.dev.html
+    make watch
+    # in another terminal start the static webserver and navigate to localhost:8000/index.dev.html
+    make serve
 
 #### prod
 

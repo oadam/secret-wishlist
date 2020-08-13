@@ -37,8 +37,8 @@ serve:
 
 watch:
 	while true; do \
-		make dev; \
-		inotifywait -qre close_write .; \
+		$(MAKE) --no-print-directory dev; \
+		inotifywait -o /dev/null --exclude 'swp$$' -qre modify .; \
 	done
 
 .PHONY: dev prod watch clean
