@@ -67,7 +67,7 @@ view : Model -> Browser.Document Msg
 view model =
     { title = interpolate "Liste de {0}" [ "josé" ]
     , body =
-        [ footer [] (textHtml "<footer>Développé avec amour par <a href='https://github.com/oadam/'>oadam</a><br>Icons by <a href='http://glyphicons.com/'>Glyphicons</a><br></footer>")
+        [ footer [] (textHtml "<footer>Développé avec amour par <a href='https://github.com/oadam/'>Olivier Adam</a></footer>")
         ]
     }
 
