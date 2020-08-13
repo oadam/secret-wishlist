@@ -2,7 +2,7 @@ name: Build Deploy
 on: [push]
 jobs:
         build:
-                name: Build
+                name: Build Deploy
                 runs-on: ubuntu-latest
                 steps:
                         - uses: actions/checkout@v2
@@ -10,3 +10,6 @@ jobs:
                           run: yarn install
                         - name: build
                           run: make prod
+                        - uses: peaceiris/actions-gh-pages@v3
+                          with:
+                                  deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
