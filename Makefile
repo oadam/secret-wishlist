@@ -27,7 +27,7 @@ $(OUT)/elm.opti.js: $(wildcard elm/*.elm)
 	#$(EXECS)/elm make --optimize elm/Main.elm --output=$@
 
 $(OUT)/elm.min.js: $(OUT)/elm.opti.js
-	$(EXECS)/uglifyjs $< --compress 'pure_funcs="F2,F3,F4,F5,F6,F7,F8,F9,A2,A3,A4,A5,A6,A7,A8,A9",pure_getters,keep_fargs=false,unsafe_comps,unsafe' | uglifyjs --mangle > $@
+	$(EXECS)/uglifyjs $< --compress 'pure_funcs="F2,F3,F4,F5,F6,F7,F8,F9,A2,A3,A4,A5,A6,A7,A8,A9",pure_getters,keep_fargs=false,unsafe_comps,unsafe' | $(EXECS)/uglifyjs --mangle > $@
 
 serve:
 	$(EXECS)/http-server $(OUT)
