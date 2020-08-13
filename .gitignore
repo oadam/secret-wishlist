@@ -1,2 +1,4 @@
 bin
+bin/!assets
 elm-stuff
+node_modules
