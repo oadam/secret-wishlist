@@ -1,4 +1,3 @@
-bin
-bin/!assets
+public
 elm-stuff
 node_modules

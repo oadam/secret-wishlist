@@ -1,5 +1,5 @@
 EXECS=node_modules/.bin
-OUT=bin
+OUT=public
 
 dev: $(OUT)/style.css $(OUT)/elm.js $(OUT)/index.dev.html $(OUT)/assets
 
@@ -8,8 +8,8 @@ prod: $(OUT)/style.min.css $(OUT)/elm.min.js $(OUT)/index.prod.html $(OUT)/asset
 clean:
 	rm -r $(OUT)
 
-$(OUT)/assets:
-	ln -s ../web/assets $@
+$(OUT)/assets: web/assets
+	mkdir -p $(OUT) && rsync --recursive --delete --progress $</* $@/
 
 $(OUT)/index.dev.html: web/index.html
 	sed 's:CSS_HREF:style.css:; s:JS_HREF:elm.js:' $< > $@
