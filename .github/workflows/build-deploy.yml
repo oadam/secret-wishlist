@@ -9,7 +9,8 @@ jobs:
                         - name: yarn install
                           run: yarn install
                         - name: build
-                          run: make prod
+                          run: parcel webapp/index.html
                         - uses: peaceiris/actions-gh-pages@v3
                           with:
                                   deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
+                                  publish_dir: ./dist
