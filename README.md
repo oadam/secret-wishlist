@@ -12,15 +12,12 @@ Login : demo / demo
 
 ### setup
 
-    apt install inotify-tools yarn
-    yarn install
+    npm install -g parcel
 
 ### dev
 
-    make watch
-    # in another terminal
-    make serve
+    parcel index.html
 
 #### prod
 
-    make prod
+    parcel build index.html
