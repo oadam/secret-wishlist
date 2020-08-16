@@ -1,11 +1,15 @@
-module Api exposing (Present, Token, login)
+module Api exposing (Present, Token, Credentials, login)
 
 import Http
 import Json.Decode exposing (Decoder, field, list, map2, string)
 import Process
 import Task
+import Debug
 
 
+type alias Credentials =
+    { username: String
+    , password: String}
 type alias Present =
     { id : String
     , user : String
@@ -40,9 +44,9 @@ loginDecoder =
         (field "users" <| list <| string)
 
 
-login : ( String, String ) -> (Result Http.Error Token -> msg) -> Cmd msg
-login ( username, _ ) toMsg =
-    if username == "demo" then
+login : Credentials -> (Result Http.Error Token -> msg) -> Cmd msg
+login credentials toMsg =
+    if credentials.username == "demo" then
         mockHttpGet toMsg <| Token True "mockToken" demoUsers
 
     else

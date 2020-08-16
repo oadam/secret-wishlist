@@ -1,7 +1,7 @@
 module Help exposing (modal)
 
 import Html exposing (..)
-import Html.Attributes exposing (attribute, class, hidden, id, type_)
+import Html.Attributes exposing (attribute, class, type_)
 import Html.Events exposing (onClick)
 import TextHtml exposing (textHtml)
 
