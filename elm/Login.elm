@@ -1,102 +1,136 @@
 module Login exposing (..)
 
-import Api
-import Debug
+import Api exposing (Token)
 import Html exposing (..)
-import Html.Attributes exposing (class, hidden, id, required, type_, value)
-import Html.Events exposing (onClick, onInput, onSubmit)
+import Html.Attributes exposing (attribute, class, for, hidden, id, placeholder, type_, value)
+import Html.Events exposing (onInput, onSubmit)
 import Http
 import TextHtml exposing (textHtml)
 
 
+type State
+    = None
+    | Submitted
+    | Failed
+    | PickingUser Token (Maybe String)
+
+
 type Msg
-    = Submit
-    | UpdateLogin String
+    = SubmitCredentials
+    | UpdateUsername String
     | UpdatePassword String
+    | UpdatePickedUser String
     | GotAuth (Result Http.Error Api.Token)
 
 
-type State
-    = None
-    | Loading
-    | Error
-    | Success
-
-
 type alias Model =
-    { login : String
+    { username : String
     , password : String
-    , user : String
     , state : State
     }
 
 
 init : Model
 init =
-    { login = ""
+    { username = ""
     , password = ""
     , state = None
-    , user = ""
     }
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update : Msg -> Model -> (Msg -> msg) -> ( Model, Cmd msg )
+update msg model loginMsg =
     case msg of
-        GotAuth result ->
-            case result of
-                Ok token ->
-                    ( { model | state = Success }, Cmd.none )
+        UpdateUsername u ->
+            ( { model | username = u }
+            , Cmd.none
+            )
 
-                Err _ ->
-                    ( { model | state = Error }, Cmd.none )
+        UpdatePassword p ->
+            ( { model | password = p }
+            , Cmd.none
+            )
 
-        UpdateLogin login ->
-            ( { model | login = login, state = None }, Cmd.none )
-
-        UpdatePassword password ->
-            ( { model | password = password, state = None }, Cmd.none )
-
-        Submit ->
-            ( { model | state = Loading }, Api.authenticate ( model.login, model.password ) GotAuth )
-
-
-view : Model -> Html Msg
-view model =
-    let
-        alert =
+        UpdatePickedUser p ->
             case model.state of
-                None ->
-                    ""
+                PickingUser token _ ->
+                    ( { model | state = PickingUser token (Just p) }
+                    , Cmd.none
+                    )
 
-                Loading ->
-                    "<div class='alert alert-info'>Vérification de l'événement...</div>"
+                _ ->
+                    ( model, Cmd.none )
 
-                Success ->
-                    "<div class='alert alert-success'>Evénement vérifié !</div>"
+        SubmitCredentials ->
+            ( { model | state = Submitted }
+            , Api.login model.username model.password (loginMsg << GotAuth)
+            )
 
-                Error ->
-                    "<div class='alert alert-danger'>Identifiant/Mot de passe invalides</div>"
+        GotAuth (Ok token) ->
+            ( { model | state = PickingUser token Nothing }
+            , Cmd.none
+            )
+
+        GotAuth (Err _) ->
+            ( { model | state = Failed }
+            , Cmd.none
+            )
+
+
+alert : State -> List (Html msg)
+alert state =
+    textHtml <|
+        case state of
+            None ->
+                ""
+
+            Submitted ->
+                "<div class='alert alert-info'>Vérification de l'événement...</div>"
+
+            PickingUser _ _ ->
+                ""
+
+            Failed ->
+                "<div class='alert alert-danger'>Identifiant/Mot de passe invalides</div>"
+
+
+stringToOption : String -> Html msg
+stringToOption s =
+    option [ value s ] [ text s ]
+
+
+view : Model -> (Msg -> msg) -> (Token -> String -> msg) -> Html msg
+view model loginMsg startSession =
+    let
+        ( maybeUsers, submitMsg ) =
+            case model.state of
+                PickingUser token (Just u) ->
+                    ( Just token.users, startSession token u )
+
+                PickingUser token Nothing ->
+                    ( Just token.users, startSession token "bogusUser !!!" )
+
+                _ ->
+                    ( Nothing, loginMsg SubmitCredentials )
     in
-    form [ class "form", onSubmit Submit ]
-        ([ h2 [] [ text "Connexion" ]
-         , div [ class "form-group" ]
-            [ label []
-                [ text "Nom de l'évènement" ]
-            , input [ class "form-control", value model.login, required True, onInput UpdateLogin ]
-                []
-            ]
-         , div [ class "form-group" ]
-            [ label []
-                [ text "Mot de passe de l'évènement" ]
-            , input [ class "form-control", value model.password, type_ "password", required True, onInput UpdatePassword ]
-                []
-            ]
-         ]
-            ++ textHtml alert
-            ++ [ div [ class "form-group", hidden (model.state == Success) ]
-                    [ button [ class "btn btn-primary", type_ "submit" ]
-                        [ text "Connexion" ]
-                    ]
-               ]
-        )
+    [ h1 [ class "h3 mb-3 font-weight-normal" ]
+        [ text "Connexion" ]
+    , label [ class "sr-only", for "inputEvent" ]
+        [ text "Nom de l'événement" ]
+    , input [ attribute "autofocus" "", id "inputEvent", value model.username, onInput (loginMsg << UpdateUsername), class "form-control", placeholder "Nom de l'événement", attribute "required" "" ]
+        []
+    , label [ class "sr-only", for "inputPassword" ]
+        [ text "Mot de passe" ]
+    , input [ class "form-control", id "inputPassword", value model.password, onInput (loginMsg << UpdatePassword), placeholder "Mot de passe", attribute "required" "", type_ "password" ]
+        []
+    ]
+        ++ alert model.state
+        ++ [ div [ class "form-group", hidden (maybeUsers == Nothing) ]
+                [ label [ for "inputPickedUser" ]
+                    [ text "Se connecter en tant que :" ]
+                , select [ id "inputPickedUser", class "form-control", onInput (loginMsg << UpdatePickedUser) ] (Maybe.withDefault [] maybeUsers |> List.map stringToOption)
+                ]
+           , button [ class "btn btn-lg btn-primary btn-block", type_ "submit" ]
+                [ text "Connexion" ]
+           ]
+        |> form [ class "form-signin", class "text-center", onSubmit submitMsg ]
