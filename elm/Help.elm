@@ -35,5 +35,5 @@ modal closeMsg =
                 ]
             ]
         ]
-    , div [ class "modal-backdrop show" ] []
+    , div [ class "modal-backdrop show", onClick closeMsg] []
     ]

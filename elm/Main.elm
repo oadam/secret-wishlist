@@ -1,13 +1,14 @@
 module Main exposing (main)
 
 import Help
+import Http
 import Api exposing (Present, Token)
 import Browser exposing (UrlRequest)
 import Browser.Navigation as Nav exposing (Key)
 import Debug
 import Html exposing (Html, a, br, button, div, footer, form, h1, h2, h3, h4, header, i, img, input, label, li, main_, nav, p, select, span, text, textarea, ul)
 import Html.Attributes exposing (classList, alt, for, placeholder, value, attribute, class, hidden, href, id, src, title, type_)
-import Html.Events exposing (onClick)
+import Html.Events exposing (onClick, onSubmit)
 import Html.Lazy exposing (lazy)
 import PendingModification exposing (PendingModification)
 import String.Interpolate exposing (interpolate)
@@ -48,6 +49,7 @@ type Msg
     | ToggleHelp
     | SubmitLogin
     | Logout
+    | GotAuth (Result Http.Error Token)
 
 
 init : () -> Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -61,22 +63,13 @@ init flags url key =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update message model =
-    case message of
-       ToggleHelp -> ({model|help=not model.help}, Cmd.none)
-       _ -> Debug.todo "update"
-
-
-forkMe =
-    textHtml """<a href="https://github.com/oadam/secret-wishlist"><img alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" style="position: absolute; top: 0; right: 0; border: 0;" src="https://camo.githubusercontent.com/38ef81f8aca64bb9a64448d0d70f1308ef5341ab/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f72696768745f6461726b626c75655f3132313632312e706e67"></a>"""
-
-
-
---case model of
---Login credentials loginState ->
---Debug.todo "update"
---App loggedState pendingModifications ->
---Debug.todo "update"
-
+    case (message, model.page) of
+       (ToggleHelp, _) ->
+        ({model|help=not model.help}, Cmd.none)
+       (SubmitLogin, Login state) ->
+          ({model|page=Login {state|state=Submitted}} , Api.login state.credentials GotAuth )
+       _ ->
+          (model, Cmd.none)
 
 loggedTitle : LoggedState -> String
 loggedTitle state =
@@ -99,7 +92,7 @@ windowTitle page =
 
 loginMain : {credentials: Credentials, state: LoginState} -> Html Msg
 loginMain {credentials, state} =
-  form [ class "form-signin", class "text-center" ]
+  form [ class "form-signin", class "text-center", onSubmit SubmitLogin ]
     [ 
      h1 [ class "h3 mb-3 font-weight-normal" ]
         [ text "Connexion" ]
@@ -117,7 +110,7 @@ loginMain {credentials, state} =
 
 appMain : {state: LoggedState, pendingModifications: List PendingModification} -> Html Msg
 appMain {state, pendingModifications} =
-    Debug.todo "appMain"
+    div [] []
 
 viewMain : Page -> Html Msg
 viewMain page =
