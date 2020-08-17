@@ -1,26 +1,22 @@
 module Main exposing (main)
 
-import Api exposing (Present, Token)
+import Api exposing (Token)
 import Browser
 import Debug
 import Help
-import Html exposing (Html, a, br, button, div, footer, form, h1, h2, h3, h4, header, i, img, input, label, li, main_, nav, option, p, select, span, text, textarea, ul)
-import Html.Attributes exposing (alt, attribute, class, classList, for, hidden, href, id, placeholder, src, title, type_, value)
-import Html.Events exposing (onClick, onInput, onSubmit)
-import Html.Lazy exposing (lazy)
-import Http
-import Login
+import Html exposing (Html, a, div, footer, h3, header, main_, nav, option, p, select, span, text, textarea, ul)
+import Html.Attributes exposing (attribute, class, classList, for, hidden, href, id, placeholder, src, title, type_, value)
+import Html.Events exposing (onClick)
+import Pages.Login as Login
+import Pages.WishList as WishList
 import PendingModification exposing (PendingModification)
+import Present exposing (Present)
+import Session exposing (Session)
 import String.Interpolate exposing (interpolate)
-import TextHtml exposing (textHtml)
-
-
-type alias Session =
-    { token : Token, user : String }
 
 
 type LoggedState
-    = ViewList { session : Session, user : String, presents : Maybe (List Present) }
+    = WishList WishList.Model
     | EditPresent { session : Session, present : Present }
 
 
@@ -37,6 +33,7 @@ type Msg
     = ToggleHelp
     | StartSession Token String
     | LoginMsg Login.Msg
+    | WishListMsg WishList.Msg
     | Logout
 
 
@@ -64,7 +61,19 @@ update message model =
             ( { model | page = Login loginModel }, cmd )
 
         ( StartSession token username, Login _ ) ->
-            ( { model | page = App { pendingModifications = [], state = ViewList { session = Session token username, user = username, presents = Nothing } } }, Cmd.none )
+            let
+                ( wiModel, cmd ) =
+                    WishList.init (Session token username) username WishListMsg
+            in
+            ( { model
+                | page =
+                    App
+                        { pendingModifications = []
+                        , state = WishList wiModel
+                        }
+              }
+            , cmd
+            )
 
         _ ->
             ( model, Cmd.none )
@@ -73,7 +82,7 @@ update message model =
 loggedTitle : LoggedState -> String
 loggedTitle state =
     case state of
-        ViewList { user } ->
+        WishList { user } ->
             user
 
         EditPresent { present } ->

@@ -1,4 +1,4 @@
-module Login exposing (..)
+module Pages.Login exposing (Model, Msg, init, update, view)
 
 import Api exposing (Token)
 import Html exposing (..)
