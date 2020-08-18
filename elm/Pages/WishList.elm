@@ -1,30 +1,33 @@
 module Pages.WishList exposing (Model, Msg, init, update, view)
 
-import Session exposing (Session)
-import Api exposing (Token)
-import Present exposing (Present)
+import Api exposing (Present, PresentId, Token, User, UserId)
 import Html exposing (..)
 import Html.Attributes exposing (attribute, class, for, hidden, id, placeholder, type_, value)
 import Html.Events exposing (onInput, onSubmit)
 import Http
+import Session exposing (Session)
+import String.Interpolate exposing (interpolate)
 import TextHtml exposing (textHtml)
+
 
 type Msg
     = GotPresents (Result Http.Error (List Present))
 
+
 type alias Model =
     { session : Session
-    , user : String
-    , presents : Maybe (Result Http.Error (List Present)) }
-
-
-init : Session -> String -> (Msg -> msg) -> (Model, Cmd msg)
-init session user wishlistMsg =
-    ({ session = session
-    , user = user
-    , presents = Nothing
+    , user : User
+    , presents : Maybe (Result Http.Error (List Present))
     }
-    , Api.getPresents session.token user (wishlistMsg << GotPresents)
+
+
+init : Session -> User -> (Msg -> msg) -> ( Model, Cmd msg )
+init session user wishlistMsg =
+    ( { session = session
+      , user = user
+      , presents = Nothing
+      }
+    , Api.getPresents session.token user.user_id (wishlistMsg << GotPresents)
     )
 
 
@@ -37,7 +40,27 @@ update msg model wishlistMsg =
             )
 
 
-view : Model -> (Msg -> msg) -> Html msg
+viewPresent : Model -> (Msg -> msg) -> Present -> Html msg
+viewPresent model wishListMsg present =
+    div [] [ text present.subject ]
+
+
+viewPresents : Model -> (Msg -> msg) -> List (Html msg)
+viewPresents model wishListMsg =
+    case model.presents of
+        Nothing ->
+            [ p [] [ text "chargement en cours..." ] ]
+
+        Just (Err _) ->
+            [ div [ class "alert alert-danger" ] [ text "une erreur s'est produite sur le serveur" ] ]
+
+        Just (Ok presents) ->
+            List.map (viewPresent model wishListMsg) presents
+
+
+view : Model -> (Msg -> msg) -> List (Html msg)
 view model wishListMsg =
-    h1 [ class "h3 mb-3 font-weight-normal" ]
-        [ text ("Salut" ++ model.user) ]
+    [div []
+        (h1 [ class "h3 mb-3 font-weight-normal" ] [ text (interpolate "Liste de {0}" [ model.user.name ]) ]
+            :: viewPresents model wishListMsg
+        )]

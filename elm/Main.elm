@@ -1,28 +1,22 @@
 module Main exposing (main)
 
-import Api exposing (Token)
+import Api exposing (Present, PresentId, Token, User, UserId)
 import Browser
-import Debug
 import Help
-import Html exposing (Html, a, div, footer, h3, header, main_, nav, option, p, select, span, text, textarea, ul)
-import Html.Attributes exposing (attribute, class, classList, for, hidden, href, id, placeholder, src, title, type_, value)
+import Html exposing (Html, a, div, footer, h3, header, main_, nav, p, text)
+import Html.Attributes exposing (attribute, class, classList, href)
 import Html.Events exposing (onClick)
 import Pages.Login as Login
 import Pages.WishList as WishList
 import PendingModification exposing (PendingModification)
-import Present exposing (Present)
 import Session exposing (Session)
 import String.Interpolate exposing (interpolate)
 
 
-type LoggedState
-    = WishList WishList.Model
-    | EditPresent { session : Session, present : Present }
-
-
 type Page
     = Login Login.Model
-    | App { state : LoggedState, pendingModifications : List PendingModification }
+    | WishList WishList.Model (List PendingModification)
+    | EditPresent { session : Session, present : Present }
 
 
 type alias Model =
@@ -31,7 +25,7 @@ type alias Model =
 
 type Msg
     = ToggleHelp
-    | StartSession Token String
+    | StartSession Session
     | LoginMsg Login.Msg
     | WishListMsg WishList.Msg
     | Logout
@@ -60,18 +54,19 @@ update message model =
             in
             ( { model | page = Login loginModel }, cmd )
 
-        ( StartSession token username, Login _ ) ->
+        ( WishListMsg msg, WishList wishList pending ) ->
+            let
+                ( wishListModel, cmd ) =
+                    WishList.update msg wishList WishListMsg
+            in
+            ( { model | page = WishList wishListModel pending }, cmd )
+
+        ( StartSession session, Login _ ) ->
             let
                 ( wiModel, cmd ) =
-                    WishList.init (Session token username) username WishListMsg
+                    WishList.init session session.logged_user WishListMsg
             in
-            ( { model
-                | page =
-                    App
-                        { pendingModifications = []
-                        , state = WishList wiModel
-                        }
-              }
+            ( { model | page = WishList wiModel [] }
             , cmd
             )
 
@@ -79,39 +74,24 @@ update message model =
             ( model, Cmd.none )
 
 
-loggedTitle : LoggedState -> String
-loggedTitle state =
-    case state of
-        WishList { user } ->
-            user
-
-        EditPresent { present } ->
-            interpolate "Liste de {0}" [ present.user ]
-
-
 windowTitle : Page -> String
 windowTitle page =
     case page of
-        Login _ ->
+        _ ->
             "Secret Wishlist"
 
-        App { state } ->
-            loggedTitle state
 
-
-appMain : { state : LoggedState, pendingModifications : List PendingModification } -> Html Msg
-appMain { state, pendingModifications } =
-    div [] []
-
-
-viewMain : Page -> Html Msg
+viewMain : Page -> List (Html Msg)
 viewMain page =
     case page of
         Login login ->
             Login.view login LoginMsg StartSession
 
-        App state ->
-            appMain state
+        WishList wishList pending ->
+            WishList.view wishList WishListMsg
+
+        EditPresent _ ->
+            []
 
 
 view : Model -> Browser.Document Msg
@@ -139,8 +119,7 @@ view { page, help } =
                                 ]
                             ]
                         ]
-                    , main_ [ class "inner cover", attribute "role" "main" ]
-                        [ viewMain page ]
+                    , main_ [ class "inner cover", attribute "role" "main" ] (viewMain page)
                     , footer [ class "mastfoot mt-auto" ]
                         [ div [ class "inner" ]
                             [ p []

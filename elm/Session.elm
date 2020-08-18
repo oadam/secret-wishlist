@@ -1,9 +1,10 @@
 module Session exposing (Session)
 
-import Api exposing (Token)
+import Api exposing (Token, User)
 
 
 type alias Session =
     { token : Token
-    , user : String
+    , users : List User
+    , logged_user : User
     }

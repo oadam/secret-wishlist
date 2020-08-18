@@ -1,6 +1,6 @@
 module PendingModification exposing (PendingModification)
 
-import Present exposing (Present)
+import Api exposing (Present)
 
 
 type PendingModificationState
