@@ -5,7 +5,7 @@ When presents are ticked off in your list, you cannot see it, but all others can
 No more spoiled suprises !
 
 ## demo link
-https://oadam.github.io/secret-whishlist/
+https://www.secret-wishlist.tk/
 Login : demo / demo
 
 ## build instructions
