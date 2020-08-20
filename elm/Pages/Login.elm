@@ -3,7 +3,7 @@ module Pages.Login exposing (Model, Msg, init, update, view)
 import Api exposing (Token, User)
 import Array exposing (Array)
 import Html exposing (Html, button, div, form, h1, input, label, option, select, text)
-import Html.Attributes exposing (attribute, class, disabled, for, hidden, id, placeholder, selected, type_, value)
+import Html.Attributes exposing (attribute, class, disabled, for, id, placeholder, selected, type_, value)
 import Html.Events exposing (onInput, onSubmit)
 import Http
 import Session exposing (Session)
@@ -28,69 +28,73 @@ type Msg
     | GotUsers (Result Http.Error (List User))
 
 
-type alias Model =
+type Model msg = Model
     { username : String
     , password : String
     , state : State
+    , loginMsg : (Msg -> msg) 
+    , sessionMsg : (Session -> msg)
     }
 
 
-init : Model
-init =
+init : (Msg -> msg) -> (Session -> msg) -> Model msg
+init loginMsg sessionMsg = Model
     { username = ""
     , password = ""
     , state = None
+    , loginMsg = loginMsg
+    , sessionMsg = sessionMsg
     }
 
 
-update : Msg -> Model -> (Msg -> msg) -> ( Model, Cmd msg )
-update msg model loginMsg =
+update : Msg -> Model msg -> ( Model msg, Cmd msg )
+update msg (Model model) =
     case ( model.state, msg ) of
         ( _, Noop ) ->
-            ( model, Cmd.none )
+            ( Model model, Cmd.none )
 
         ( _, UpdateUsername u ) ->
-            ( { model | username = u }
+            ( Model { model | username = u }
             , Cmd.none
             )
 
         ( _, UpdatePassword p ) ->
-            ( { model | password = p }
+            ( Model { model | password = p }
             , Cmd.none
             )
 
         ( PickingUser token users _, UpdatePickedUser picked ) ->
-            ( { model | state = PickingUser token users picked }
+            ( Model { model | state = PickingUser token users picked }
             , Cmd.none
             )
 
         ( _, SubmitCredentials ) ->
-            ( { model | state = Submitted }
-            , Api.login model.username model.password (loginMsg << GotAuth)
+            ( Model { model | state = Submitted }
+            , Api.login model.username model.password (model.loginMsg << GotAuth)
             )
 
         ( _, GotAuth (Ok token) ) ->
-            ( { model | state = LoadingUsers token }
-            , Api.getUsers token (loginMsg << GotUsers)
+            ( Model { model | state = LoadingUsers token }
+            , Api.getUsers token (model.loginMsg << GotUsers)
             )
 
         ( _, GotAuth (Err _) ) ->
-            ( { model | state = Failed }
+            ( Model { model | state = Failed }
             , Cmd.none
             )
 
         ( LoadingUsers token, GotUsers (Ok users) ) ->
-            ( { model | state = PickingUser token (Array.fromList users) Nothing }
+            ( Model { model | state = PickingUser token (Array.fromList users) Nothing }
             , Cmd.none
             )
 
         ( _, GotUsers (Err _) ) ->
-            ( { model | state = Failed }
+            ( Model { model | state = Failed }
             , Cmd.none
             )
 
         ( _, _ ) ->
-            ( model, Cmd.none )
+            ( Model model, Cmd.none )
 
 
 alert : State -> List (Html msg)
@@ -113,13 +117,13 @@ alert state =
                 "<div class='alert alert-danger'>Identifiant/Mot de passe invalides</div>"
 
 
-userSelect : State -> (Msg -> msg) -> List (Html msg)
-userSelect state loginMsg =
-    case state of
+userSelect : Model msg -> List (Html msg)
+userSelect (Model model) =
+    case model.state of
         PickingUser _ users picked_user ->
             [ div [ class "form-group" ]
                 [ label [ for "inputPickedUser" ] [ text "Se connecter en tant que :" ]
-                , select [ id "inputPickedUser", class "form-control", onInput (loginMsg << UpdatePickedUser << userIdFromOption users) ]
+                , select [ id "inputPickedUser", class "form-control", onInput (model.loginMsg << UpdatePickedUser << userIdFromOption users) ]
                     (option [ disabled True, selected (picked_user == Nothing) ] [ text "\u{00A0}" ]
                         :: (Array.toList users |> List.indexedMap (userToOption picked_user))
                     ) ]
@@ -144,33 +148,33 @@ userIdFromOption users index =
         |> Maybe.andThen (\i -> Array.get i users)
 
 
-view : Model -> (Msg -> msg) -> (Session -> msg) -> List (Html msg)
-view model loginMsg startSession =
+view : Model msg -> List (Html msg)
+view (Model model) =
     let
         (submitDisabled, submitMsg) =
             case model.state of
                 PickingUser token users (Just u) ->
-                    (False, startSession (Session token (Array.toList users) u))
+                    (False, model.sessionMsg (Session token (Array.toList users) u))
 
                 PickingUser _ _ Nothing ->
-                    (True, loginMsg Noop)
+                    (True, model.loginMsg Noop)
 
                 _ ->
-                    (False, loginMsg SubmitCredentials)
+                    (False, model.loginMsg SubmitCredentials)
     in
     [ h1 [ class "h3 mb-3 font-weight-normal" ]
         [ text "Connexion" ]
     , label [ class "sr-only", for "inputEvent" ]
         [ text "Nom de l'événement" ]
-    , input [ attribute "autofocus" "", id "inputEvent", value model.username, onInput (loginMsg << UpdateUsername), class "form-control", placeholder "Nom de l'événement", attribute "required" "" ]
+    , input [ attribute "autofocus" "", id "inputEvent", value model.username, onInput (model.loginMsg << UpdateUsername), class "form-control", placeholder "Nom de l'événement", attribute "required" "" ]
         []
     , label [ class "sr-only", for "inputPassword" ]
         [ text "Mot de passe" ]
-    , input [ class "form-control", id "inputPassword", value model.password, onInput (loginMsg << UpdatePassword), placeholder "Mot de passe", attribute "required" "", type_ "password" ]
+    , input [ class "form-control", id "inputPassword", value model.password, onInput (model.loginMsg << UpdatePassword), placeholder "Mot de passe", attribute "required" "", type_ "password" ]
         []
     ]
         ++ alert model.state
-        ++ userSelect model.state loginMsg
+        ++ userSelect (Model model)
         ++ [ button [ disabled submitDisabled, class "btn btn-lg btn-primary btn-block", type_ "submit" ]
                 [ text "Connexion" ]
            ]

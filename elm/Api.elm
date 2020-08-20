@@ -67,9 +67,9 @@ presentDecoder =
 
 
 getPresents : Token -> UserId -> (Result Http.Error (List Present) -> msg) -> Cmd msg
-getPresents (Token demo token) userName toMsg =
+getPresents (Token demo token) user_id toMsg =
     if demo then
-        mockHttpGet toMsg <| demoPresents
+        mockHttpGet toMsg <| List.filter (\p -> p.user_id == user_id) demoPresents
 
     else
         Http.get

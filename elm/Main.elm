@@ -14,7 +14,7 @@ import String.Interpolate exposing (interpolate)
 
 
 type Page
-    = Login Login.Model
+    = Login (Login.Model Msg)
     | WishList WishList.Model (List PendingModification)
     | EditPresent { session : Session, present : Present }
 
@@ -34,7 +34,7 @@ type Msg
 init : () -> ( Model, Cmd Msg )
 init flags =
     ( { page =
-            Login Login.init
+            Login <| Login.init LoginMsg StartSession
       , help = False
       }
     , Cmd.none
@@ -50,7 +50,7 @@ update message model =
         ( LoginMsg msg, Login login ) ->
             let
                 ( loginModel, cmd ) =
-                    Login.update msg login LoginMsg
+                    Login.update msg login
             in
             ( { model | page = Login loginModel }, cmd )
 
@@ -59,7 +59,7 @@ update message model =
                 ( wishListModel, cmd ) =
                     WishList.update msg wishList WishListMsg
             in
-            ( { model | page = WishList wishListModel pending }, cmd )
+            ( { model | page =  WishList wishListModel pending}, cmd )
 
         ( StartSession session, Login _ ) ->
             let
@@ -73,7 +73,6 @@ update message model =
         _ ->
             ( model, Cmd.none )
 
-
 windowTitle : Page -> String
 windowTitle page =
     case page of
@@ -81,17 +80,17 @@ windowTitle page =
             "Secret Wishlist"
 
 
+
 viewMain : Page -> List (Html Msg)
 viewMain page =
     case page of
         Login login ->
-            Login.view login LoginMsg StartSession
-
+            Login.view login
         WishList wishList pending ->
             WishList.view wishList WishListMsg
-
         EditPresent _ ->
             []
+
 
 
 view : Model -> Browser.Document Msg
