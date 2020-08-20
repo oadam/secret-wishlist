@@ -8,14 +8,13 @@ import Html.Attributes exposing (attribute, class, classList, href)
 import Html.Events exposing (onClick)
 import Pages.Login as Login
 import Pages.WishList as WishList
-import PendingModification exposing (PendingModification)
 import Session exposing (Session)
 import String.Interpolate exposing (interpolate)
 
 
 type Page
     = Login (Login.Model Msg)
-    | WishList WishList.Model (List PendingModification)
+    | WishList (WishList.Model Msg)
     | EditPresent { session : Session, present : Present }
 
 
@@ -28,6 +27,7 @@ type Msg
     | StartSession Session
     | LoginMsg Login.Msg
     | WishListMsg WishList.Msg
+    | EditPresentMsg Present
     | Logout
 
 
@@ -54,24 +54,25 @@ update message model =
             in
             ( { model | page = Login loginModel }, cmd )
 
-        ( WishListMsg msg, WishList wishList pending ) ->
+        ( WishListMsg msg, WishList wishList ) ->
             let
                 ( wishListModel, cmd ) =
-                    WishList.update msg wishList WishListMsg
+                    WishList.update msg wishList
             in
-            ( { model | page =  WishList wishListModel pending}, cmd )
+            ( { model | page = WishList wishListModel }, cmd )
 
         ( StartSession session, Login _ ) ->
             let
                 ( wiModel, cmd ) =
-                    WishList.init session session.logged_user WishListMsg
+                    WishList.init session session.logged_user [] WishListMsg EditPresentMsg
             in
-            ( { model | page = WishList wiModel [] }
+            ( { model | page = WishList wiModel }
             , cmd
             )
 
         _ ->
             ( model, Cmd.none )
+
 
 windowTitle : Page -> String
 windowTitle page =
@@ -80,17 +81,27 @@ windowTitle page =
             "Secret Wishlist"
 
 
-
 viewMain : Page -> List (Html Msg)
 viewMain page =
     case page of
         Login login ->
             Login.view login
-        WishList wishList pending ->
-            WishList.view wishList WishListMsg
+
+        WishList wishList ->
+            WishList.view wishList
+
         EditPresent _ ->
             []
 
+
+centerMain : Page -> Bool
+centerMain page =
+    case page of
+        Login _ ->
+            True
+
+        _ ->
+            False
 
 
 view : Model -> Browser.Document Msg
@@ -104,7 +115,7 @@ view { page, help } =
             []
         )
             ++ [ div [ class "cover-container d-flex w-100 h-100 p-3 mx-auto flex-column" ]
-                    [ header [ class "masthead mb-auto" ]
+                    [ header [ class "masthead", classList [ ( "mb-auto", centerMain page ) ] ]
                         [ div [ class "inner" ]
                             [ h3 [ class "masthead-brand" ]
                                 [ text "Secret Wishlist" ]
@@ -118,7 +129,7 @@ view { page, help } =
                                 ]
                             ]
                         ]
-                    , main_ [ class "inner cover", attribute "role" "main" ] (viewMain page)
+                    , main_ [ class "inner", classList [ ( "cover", centerMain page ) ], attribute "role" "main" ] (viewMain page)
                     , footer [ class "mastfoot mt-auto" ]
                         [ div [ class "inner" ]
                             [ p []
