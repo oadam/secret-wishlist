@@ -16,12 +16,14 @@ $link-color: #fff;
 }
 
 .present.offered {
+  opacity: 0.7;
   .card-title, .card-text {
     text-decoration: line-through;
   }
 }
-.card-link {
-  cursor: pointer;
+.present-buttons {
+  text-align: right;
+  margin-top: 0.5rem;
 }
 
 /*

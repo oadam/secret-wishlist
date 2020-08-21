@@ -166,9 +166,9 @@ view { page, help } =
                     , footer [ class "mastfoot mt-auto" ]
                         [ div [ class "inner" ]
                             [ p []
-                                [ text "Créé par Olivier Adam."
+                                [ text "Créé par Olivier Adam. Code source sur "
                                 , a [ href "https://www.github.com/oadam/secret-wishlist/" ]
-                                    [ text "Github sources" ]
+                                    [ text "Github" ]
                                 ]
                             ]
                         ]

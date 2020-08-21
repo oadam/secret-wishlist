@@ -1,4 +1,4 @@
-module Pages.WishList exposing (Model, Msg, init, update, view, getSession)
+module Pages.WishList exposing (Model, Msg, getSession, init, update, view)
 
 import Api exposing (Present, PresentId, Token, User, UserId, userIdFromString, userIdToString)
 import Html exposing (..)
@@ -28,6 +28,7 @@ type Model msg
         , pendingModifications : List PendingModification
         }
 
+
 init : Session -> User -> List PendingModification -> (Msg -> msg) -> (Present -> msg) -> ( Model msg, Cmd msg )
 init session user pendingModifications wishListMsg editPresentMessage =
     ( Model
@@ -41,8 +42,10 @@ init session user pendingModifications wishListMsg editPresentMessage =
     , Api.getPresents session.token user.user_id (wishListMsg << GotPresents)
     )
 
+
 getSession : Model msg -> Session
-getSession (Model model) = model.session
+getSession (Model model) =
+    model.session
 
 
 update : Msg -> Model msg -> ( Model msg, Cmd msg )
@@ -98,6 +101,8 @@ replacePresent presents present =
         )
         presents
 
+fontawesome : String -> Html msg
+fontawesome icon = i [ class ("fa fa-"++icon), attribute "aria-hidden" "true"] []
 
 viewPresent : Model msg -> Present -> Html msg
 viewPresent (Model model) present =
@@ -112,11 +117,29 @@ viewPresent (Model model) present =
         [ div [ class "card-body" ]
             [ h5 [ class "card-title" ] [ text present.title ]
             , div [ class "card-text" ] (textHtml present.description)
-            , div [ class "text-right" ]
-                [ button [ class "btn card-link", hidden offered ] [ text "modifier" ]
-                , button [ class "btn card-link", hidden offered, onClick <| model.wishListMsg <| UpdatePresent { present | offeredBy = Just model.session.logged_user.user_id } ] [ text "rayer" ]
-                , button [ class "btn card-link", hidden (not offered), onClick <| model.wishListMsg <| UpdatePresent { present | offeredBy = Nothing } ] [ text "dé-rayer" ]
-                , button [ class "btn card-link text-danger", onClick <| model.wishListMsg <| UpdatePresent { present | deletedBy = Just model.session.logged_user.user_id } ] [ text "supprimer" ]
+            , div [ class "present-buttons" ]
+                [ button
+                    [ class "btn btn-default"
+                    , hidden offered
+                    ]
+                    [ fontawesome "pencil", text " modifier"]
+                , button
+                    [ class "btn"
+                    , hidden offered
+                    , onClick <| model.wishListMsg <| UpdatePresent { present | offeredBy = Just model.session.logged_user.user_id }
+                    ]
+                    [ fontawesome "check-square-o", text " rayer" ]
+                , button
+                    [ class "btn"
+                    , hidden (not offered)
+                    , onClick <| model.wishListMsg <| UpdatePresent { present | offeredBy = Nothing }
+                    ]
+                    [ fontawesome "square-o", text " dé-rayer" ]
+                , button
+                    [ class "btn text-danger"
+                    , onClick <| model.wishListMsg <| UpdatePresent { present | deletedBy = Just model.session.logged_user.user_id }
+                    ]
+                    [ fontawesome "trash", text " supprimer" ]
                 ]
             ]
         ]
