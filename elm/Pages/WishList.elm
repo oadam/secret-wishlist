@@ -1,4 +1,4 @@
-module Pages.WishList exposing (Model, Msg, init, update, view)
+module Pages.WishList exposing (Model, Msg, init, update, view, getSession)
 
 import Api exposing (Present, PresentId, Token, User, UserId, userIdFromString, userIdToString)
 import Html exposing (..)
@@ -15,6 +15,7 @@ type Msg
     = GotPresents (Result Http.Error (List Present))
     | ChangeList (Maybe UserId)
     | UpdatePresent Present
+    | GotUpdatedPresent (Result Http.Error Present)
 
 
 type Model msg
@@ -26,7 +27,6 @@ type Model msg
         , editPresentMessage : Present -> msg
         , pendingModifications : List PendingModification
         }
-
 
 init : Session -> User -> List PendingModification -> (Msg -> msg) -> (Present -> msg) -> ( Model msg, Cmd msg )
 init session user pendingModifications wishListMsg editPresentMessage =
@@ -41,6 +41,9 @@ init session user pendingModifications wishListMsg editPresentMessage =
     , Api.getPresents session.token user.user_id (wishListMsg << GotPresents)
     )
 
+getSession : Model msg -> Session
+getSession (Model model) = model.session
+
 
 update : Msg -> Model msg -> ( Model msg, Cmd msg )
 update msg (Model model) =
@@ -51,6 +54,14 @@ update msg (Model model) =
             )
 
         UpdatePresent present ->
+            ( Model { model | presents = replacePresent model.presents present }
+            , Api.updatePresent model.session.token present (model.wishListMsg << GotUpdatedPresent)
+            )
+
+        GotUpdatedPresent (Err _) ->
+            ( Model model, Cmd.none )
+
+        GotUpdatedPresent (Ok present) ->
             ( Model { model | presents = replacePresent model.presents present }
             , Cmd.none
             )
@@ -102,10 +113,10 @@ viewPresent (Model model) present =
             [ h5 [ class "card-title" ] [ text present.title ]
             , div [ class "card-text" ] (textHtml present.description)
             , div [ class "text-right" ]
-                [ a [ class "card-link", hidden offered ] [ text "modifier" ]
-                , a [ class "card-link", hidden offered, onClick <| model.wishListMsg <| UpdatePresent { present | offeredBy = Just model.session.logged_user.user_id } ] [ text "rayer" ]
-                , a [ class "card-link", hidden (not offered), onClick <| model.wishListMsg <| UpdatePresent { present | offeredBy = Nothing } ] [ text "dé-rayer" ]
-                , a [ class "card-link", class "text-danger", onClick <| model.wishListMsg <| UpdatePresent { present | deletedBy = Just model.session.logged_user.user_id } ] [ text "supprimer" ]
+                [ button [ class "btn card-link", hidden offered ] [ text "modifier" ]
+                , button [ class "btn card-link", hidden offered, onClick <| model.wishListMsg <| UpdatePresent { present | offeredBy = Just model.session.logged_user.user_id } ] [ text "rayer" ]
+                , button [ class "btn card-link", hidden (not offered), onClick <| model.wishListMsg <| UpdatePresent { present | offeredBy = Nothing } ] [ text "dé-rayer" ]
+                , button [ class "btn card-link text-danger", onClick <| model.wishListMsg <| UpdatePresent { present | deletedBy = Just model.session.logged_user.user_id } ] [ text "supprimer" ]
                 ]
             ]
         ]

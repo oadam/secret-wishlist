@@ -3,8 +3,8 @@ module Main exposing (main)
 import Api exposing (Present, PresentId, Token, User, UserId)
 import Browser
 import Help
-import Html exposing (Html, a, div, footer, h3, header, main_, nav, p, text)
-import Html.Attributes exposing (attribute, class, classList, href)
+import Html exposing (Html, a, br, button, div, footer, h1, h3, header, main_, nav, p, span, text)
+import Html.Attributes exposing (attribute, class, classList, hidden, href)
 import Html.Events exposing (onClick)
 import Pages.Login as Login
 import Pages.WishList as WishList
@@ -70,6 +70,9 @@ update message model =
             , cmd
             )
 
+        ( Logout, _ ) ->
+            init ()
+
         _ ->
             ( model, Cmd.none )
 
@@ -86,12 +89,36 @@ viewMain page =
     case page of
         Login login ->
             Login.view login
+                ++ [ p [ class "lead text-center" ]
+                        [ button [ class "btn btn-link", onClick ToggleHelp ]
+                            [ text "Comment ça marche ?" ]
+                        ]
+                   ]
 
         WishList wishList ->
             WishList.view wishList
 
         EditPresent _ ->
             []
+
+
+viewLogout : Page -> List (Html Msg)
+viewLogout page =
+    let
+        session =
+            getSession page
+    in
+    case session of
+        Nothing ->
+            []
+
+        Just s ->
+            [ nav [ class "nav nav-masthead justify-content-center" ]
+                [ span [ class "nav-link active disabled" ] [ text s.logged_user.name ]
+                , button [ class "nav-link btn", onClick Logout ]
+                    [ text "Déconnexion" ]
+                ]
+            ]
 
 
 centerMain : Page -> Bool
@@ -102,6 +129,19 @@ centerMain page =
 
         _ ->
             False
+
+
+getSession : Page -> Maybe Session
+getSession page =
+    case page of
+        Login _ ->
+            Nothing
+
+        WishList wishlist ->
+            Just <| WishList.getSession wishlist
+
+        EditPresent _ ->
+            Nothing
 
 
 view : Model -> Browser.Document Msg
@@ -117,29 +157,18 @@ view { page, help } =
             ++ [ div [ class "cover-container d-flex w-100 h-100 p-3 mx-auto flex-column" ]
                     [ header [ class "masthead", classList [ ( "mb-auto", centerMain page ) ] ]
                         [ div [ class "inner" ]
-                            [ h3 [ class "masthead-brand" ]
+                            (h3 [ class "masthead-brand" ]
                                 [ text "Secret Wishlist" ]
-                            , nav [ class "nav nav-masthead justify-content-center" ]
-                                [ a [ classList [ ( "nav-link", True ), ( "active", help ) ], onClick ToggleHelp ]
-                                    [ text "Aide" ]
-                                , a [ class "nav-link", href "#" ]
-                                    [ text "Features" ]
-                                , a [ class "nav-link", href "#" ]
-                                    [ text "Contact" ]
-                                ]
-                            ]
+                                :: viewLogout page
+                            )
                         ]
                     , main_ [ class "inner", classList [ ( "cover", centerMain page ) ], attribute "role" "main" ] (viewMain page)
                     , footer [ class "mastfoot mt-auto" ]
                         [ div [ class "inner" ]
                             [ p []
-                                [ text "Cover template for "
-                                , a [ href "https://getbootstrap.com/" ]
-                                    [ text "Bootstrap" ]
-                                , text ", by "
-                                , a [ href "https://twitter.com/mdo" ]
-                                    [ text "@mdo" ]
-                                , text "."
+                                [ text "Créé par Olivier Adam."
+                                , a [ href "https://www.github.com/oadam/secret-wishlist/" ]
+                                    [ text "Github sources" ]
                                 ]
                             ]
                         ]

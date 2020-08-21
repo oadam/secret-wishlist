@@ -13,7 +13,7 @@ modal closeMsg =
             [ div [ class "modal-content" ]
                 [ div [ class "modal-header" ]
                     [ h4 [ class "modal-title" ]
-                        [ text "Bienvenue sur dedguenodgo 2.0 !" ]
+                        [ text "Bienvenue sur Secret Wishlist !" ]
                     , button [ attribute "aria-hidden" "true", class "close", onClick closeMsg, type_ "button" ]
                         [ text "×" ]
                     ]

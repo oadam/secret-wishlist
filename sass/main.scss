@@ -5,6 +5,7 @@ $breadcrumb-bg: $body-bg;
 $modal-content-bg: $body-bg;
 $card-bg: $body-bg;
 $close-color: $body-color;
+$link-color: #fff;
 
 @import "../node_modules/bootstrap/scss/bootstrap";
 
@@ -96,7 +97,6 @@ body {
 
 .nav-masthead .nav-link.active {
   color: $body-color;
-  border-bottom-color: $body-color;
 }
 
 @media (min-width: 48em) {
