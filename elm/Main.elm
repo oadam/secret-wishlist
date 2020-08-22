@@ -3,19 +3,18 @@ module Main exposing (main)
 import Api exposing (Present, PresentId, Token, User, UserId)
 import Browser
 import Help
-import Html exposing (Html, a, u, br, button, div, footer, h1, h3, header, main_, nav, p, span, text)
+import Html exposing (Html, a, br, button, div, footer, h1, h3, header, main_, nav, p, span, text, u)
 import Html.Attributes exposing (attribute, class, classList, hidden, href)
 import Html.Events exposing (onClick)
-import Pages.Login as Login
+import Pages.Login as Login exposing (Msg)
 import Pages.WishList as WishList
 import Session exposing (Session)
 import String.Interpolate exposing (interpolate)
 
 
 type Page
-    = Login (Login.Model Msg)
+    = Login Login.Model
     | WishList (WishList.Model Msg)
-    | EditPresent { session : Session, present : Present }
 
 
 type alias Model =
@@ -24,7 +23,6 @@ type alias Model =
 
 type Msg
     = ToggleHelp
-    | StartSession Session
     | LoginMsg Login.Msg
     | WishListMsg WishList.Msg
     | EditPresentMsg Present
@@ -34,7 +32,7 @@ type Msg
 init : () -> ( Model, Cmd Msg )
 init flags =
     ( { page =
-            Login <| Login.init LoginMsg StartSession
+            Login <| Login.init
       , help = False
       }
     , Cmd.none
@@ -49,10 +47,24 @@ update message model =
 
         ( LoginMsg msg, Login login ) ->
             let
+                newSession =
+                    Login.isMsgStartSession msg
+
                 ( loginModel, cmd ) =
                     Login.update msg login
             in
-            ( { model | page = Login loginModel }, cmd )
+            case newSession of
+                Nothing ->
+                    ( { model | page = Login loginModel }, Cmd.map LoginMsg cmd )
+
+                Just session ->
+                    let
+                        ( wiModel, wiCmd ) =
+                            WishList.init session session.logged_user [] WishListMsg EditPresentMsg
+                    in
+                    ( { model | page = WishList wiModel }
+                    , wiCmd
+                    )
 
         ( WishListMsg msg, WishList wishList ) ->
             let
@@ -60,15 +72,6 @@ update message model =
                     WishList.update msg wishList
             in
             ( { model | page = WishList wishListModel }, cmd )
-
-        ( StartSession session, Login _ ) ->
-            let
-                ( wiModel, cmd ) =
-                    WishList.init session session.logged_user [] WishListMsg EditPresentMsg
-            in
-            ( { model | page = WishList wiModel }
-            , cmd
-            )
 
         ( Logout, _ ) ->
             init ()
@@ -88,7 +91,7 @@ viewMain : Page -> List (Html Msg)
 viewMain page =
     case page of
         Login login ->
-            Login.view login
+            List.map (Html.map LoginMsg) (Login.view login)
                 ++ [ p [ class "lead text-center" ]
                         [ button [ class "btn btn-link", onClick ToggleHelp ]
                             [ text "Comment ça marche ?" ]
@@ -97,9 +100,6 @@ viewMain page =
 
         WishList wishList ->
             WishList.view wishList
-
-        EditPresent _ ->
-            []
 
 
 viewLogout : Page -> List (Html Msg)
@@ -114,7 +114,7 @@ viewLogout page =
 
         Just s ->
             [ nav [ class "nav nav-masthead justify-content-center" ]
-                [ span [] [ span [class "text-muted"] [text "connecté en tant que "], span [] [ text s.logged_user.name] ]
+                [ span [] [ span [ class "text-muted" ] [ text "connecté en tant que " ], span [] [ text s.logged_user.name ] ]
                 , button [ class "btn", onClick Logout ]
                     [ text "Déconnexion" ]
                 ]
@@ -139,9 +139,6 @@ getSession page =
 
         WishList wishlist ->
             Just <| WishList.getSession wishlist
-
-        EditPresent _ ->
-            Nothing
 
 
 view : Model -> Browser.Document Msg

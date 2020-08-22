@@ -1,4 +1,4 @@
-module Pages.Login exposing (Model, Msg, init, update, view)
+module Pages.Login exposing (Model, Msg, init, isMsgStartSession, update, view)
 
 import Api exposing (Token, User)
 import Array exposing (Array)
@@ -26,28 +26,37 @@ type Msg
     | UpdatePickedUser (Maybe User)
     | GotAuth (Result Http.Error Api.Token)
     | GotUsers (Result Http.Error (List User))
+    | StartSession Session
 
 
-type Model msg = Model
-    { username : String
-    , password : String
-    , state : State
-    , loginMsg : (Msg -> msg) 
-    , sessionMsg : (Session -> msg)
-    }
+isMsgStartSession : Msg -> Maybe Session
+isMsgStartSession msg =
+    case msg of
+        StartSession session ->
+            Just session
+
+        _ ->
+            Nothing
 
 
-init : (Msg -> msg) -> (Session -> msg) -> Model msg
-init loginMsg sessionMsg = Model
-    { username = ""
-    , password = ""
-    , state = None
-    , loginMsg = loginMsg
-    , sessionMsg = sessionMsg
-    }
+type Model
+    = Model
+        { username : String
+        , password : String
+        , state : State
+        }
 
 
-update : Msg -> Model msg -> ( Model msg, Cmd msg )
+init : Model
+init =
+    Model
+        { username = ""
+        , password = ""
+        , state = None
+        }
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg (Model model) =
     case ( model.state, msg ) of
         ( _, Noop ) ->
@@ -70,12 +79,12 @@ update msg (Model model) =
 
         ( _, SubmitCredentials ) ->
             ( Model { model | state = Submitted }
-            , Api.login model.username model.password (model.loginMsg << GotAuth)
+            , Api.login model.username model.password GotAuth
             )
 
         ( _, GotAuth (Ok token) ) ->
             ( Model { model | state = LoadingUsers token }
-            , Api.getUsers token (model.loginMsg << GotUsers)
+            , Api.getUsers token GotUsers
             )
 
         ( _, GotAuth (Err _) ) ->
@@ -117,29 +126,35 @@ alert state =
                 "<div class='alert alert-danger'>Identifiant/Mot de passe invalides</div>"
 
 
-userSelect : Model msg -> List (Html msg)
+userSelect : Model -> List (Html Msg)
 userSelect (Model model) =
     case model.state of
         PickingUser _ users picked_user ->
             [ div [ class "form-group" ]
                 [ label [ for "inputPickedUser" ] [ text "Se connecter en tant que :" ]
-                , select [ id "inputPickedUser", class "form-control", onInput (model.loginMsg << UpdatePickedUser << userIdFromOption users) ]
+                , select [ id "inputPickedUser", class "form-control", onInput (UpdatePickedUser << userIdFromOption users) ]
                     (option [ disabled True, selected (picked_user == Nothing) ] [ text "\u{00A0}" ]
                         :: (Array.toList users |> List.indexedMap (userToOption picked_user))
-                    ) ]
+                    )
+                ]
             ]
 
         _ ->
             []
 
 
-userToOption : (Maybe User) -> Int -> User -> Html msg
+userToOption : Maybe User -> Int -> User -> Html msg
 userToOption picked_user index user =
-    let userSelected = case picked_user of
-            Nothing -> False
-            Just u -> u.user_id == user.user_id
-        in
-            option [ value (String.fromInt index), selected userSelected ] [ text user.name ]
+    let
+        userSelected =
+            case picked_user of
+                Nothing ->
+                    False
+
+                Just u ->
+                    u.user_id == user.user_id
+    in
+    option [ value (String.fromInt index), selected userSelected ] [ text user.name ]
 
 
 userIdFromOption : Array User -> String -> Maybe User
@@ -148,29 +163,29 @@ userIdFromOption users index =
         |> Maybe.andThen (\i -> Array.get i users)
 
 
-view : Model msg -> List (Html msg)
+view : Model -> List (Html Msg)
 view (Model model) =
     let
-        (submitDisabled, submitMsg) =
+        ( submitDisabled, submitMsg ) =
             case model.state of
                 PickingUser token users (Just u) ->
-                    (False, model.sessionMsg (Session token (Array.toList users) u))
+                    ( False, StartSession (Session token (Array.toList users) u) )
 
                 PickingUser _ _ Nothing ->
-                    (True, model.loginMsg Noop)
+                    ( True, Noop )
 
                 _ ->
-                    (False, model.loginMsg SubmitCredentials)
+                    ( False, SubmitCredentials )
     in
     [ h1 [ class "h3 mb-3 font-weight-normal" ]
         [ text "Connexion" ]
     , label [ class "sr-only", for "inputEvent" ]
         [ text "Nom de l'événement" ]
-    , input [ attribute "autofocus" "", id "inputEvent", value model.username, onInput (model.loginMsg << UpdateUsername), class "form-control", placeholder "Nom de l'événement", attribute "required" "" ]
+    , input [ attribute "autofocus" "", id "inputEvent", value model.username, onInput UpdateUsername, class "form-control", placeholder "Nom de l'événement", attribute "required" "" ]
         []
     , label [ class "sr-only", for "inputPassword" ]
         [ text "Mot de passe" ]
-    , input [ class "form-control", id "inputPassword", value model.password, onInput (model.loginMsg << UpdatePassword), placeholder "Mot de passe", attribute "required" "", type_ "password" ]
+    , input [ class "form-control", id "inputPassword", value model.password, onInput UpdatePassword, placeholder "Mot de passe", attribute "required" "", type_ "password" ]
         []
     ]
         ++ alert model.state
