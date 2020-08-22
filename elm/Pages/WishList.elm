@@ -18,11 +18,17 @@ type Msg
     | GotUpdatedPresent (Result Http.Error Present)
 
 
+type State
+    = Loading
+    | Fail
+    | ShowPresents (List Present)
+
+
 type Model msg
     = Model
         { session : Session
         , user : User
-        , presents : Maybe (Result Http.Error (List Present))
+        , state : State
         , wishListMsg : Msg -> msg
         , editPresentMessage : Present -> msg
         , pendingModifications : List PendingModification
@@ -34,7 +40,7 @@ init session user pendingModifications wishListMsg editPresentMessage =
     ( Model
         { session = session
         , user = user
-        , presents = Nothing
+        , state = Loading
         , wishListMsg = wishListMsg
         , editPresentMessage = editPresentMessage
         , pendingModifications = pendingModifications
@@ -51,13 +57,18 @@ getSession (Model model) =
 update : Msg -> Model msg -> ( Model msg, Cmd msg )
 update msg (Model model) =
     case msg of
-        GotPresents result ->
-            ( Model { model | presents = Just result }
+        GotPresents (Err _) ->
+            ( Model { model | state = Fail }
+            , Cmd.none
+            )
+
+        GotPresents (Ok presents) ->
+            ( Model { model | state = ShowPresents presents }
             , Cmd.none
             )
 
         UpdatePresent present ->
-            ( Model { model | presents = replacePresent model.presents present }
+            ( Model { model | state = replacePresent model.state present }
             , Api.updatePresent model.session.token present (model.wishListMsg << GotUpdatedPresent)
             )
 
@@ -65,7 +76,7 @@ update msg (Model model) =
             ( Model model, Cmd.none )
 
         GotUpdatedPresent (Ok present) ->
-            ( Model { model | presents = replacePresent model.presents present }
+            ( Model { model | state = replacePresent model.state present }
             , Cmd.none
             )
 
@@ -85,24 +96,30 @@ update msg (Model model) =
                     ( Model model, Cmd.none )
 
 
-replacePresent : Maybe (Result Http.Error (List Present)) -> Present -> Maybe (Result Http.Error (List Present))
-replacePresent presents present =
-    Maybe.map
-        (Result.map
-            (List.map
-                (\p ->
-                    if p.id == present.id then
-                        present
+replacePresent : State -> Present -> State
+replacePresent state present =
+    case state of
+        ShowPresents presents ->
+            ShowPresents
+                (List.map
+                    (\p ->
+                        if p.id == present.id then
+                            present
 
-                    else
-                        p
+                        else
+                            p
+                    )
+                    presents
                 )
-            )
-        )
-        presents
+
+        _ ->
+            state
+
 
 fontawesome : String -> Html msg
-fontawesome icon = i [ class ("fa fa-"++icon), attribute "aria-hidden" "true"] []
+fontawesome icon =
+    i [ class ("fa fa-" ++ icon), attribute "aria-hidden" "true" ] []
+
 
 viewPresent : Model msg -> Present -> Html msg
 viewPresent (Model model) present =
@@ -122,7 +139,7 @@ viewPresent (Model model) present =
                     [ class "btn btn-default"
                     , hidden offered
                     ]
-                    [ fontawesome "pencil", text " modifier"]
+                    [ fontawesome "pencil", text " modifier" ]
                 , button
                     [ class "btn"
                     , hidden offered
@@ -147,14 +164,14 @@ viewPresent (Model model) present =
 
 viewPresents : Model msg -> List (Html msg)
 viewPresents (Model model) =
-    case model.presents of
-        Nothing ->
+    case model.state of
+        Loading ->
             [ p [] [ text "chargement en cours..." ] ]
 
-        Just (Err _) ->
+        Fail ->
             [ div [ class "alert alert-danger" ] [ text "une erreur s'est produite sur le serveur" ] ]
 
-        Just (Ok presents) ->
+        ShowPresents presents ->
             List.map (viewPresent (Model model)) presents
 
 
