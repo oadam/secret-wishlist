@@ -26,6 +26,10 @@ $link-color: #fff;
   margin-top: 0.5rem;
 }
 
+.breadcrumb, .breadcrumb-item {
+	align-items: center;
+}
+
 /*
  * Globals
  */
@@ -74,10 +78,19 @@ body {
  */
 .masthead {
   margin-bottom: 2rem;
+  & > .inner {
+    display: flex;
+    justify-content: space-between;
+  }
 }
 
 .masthead-brand {
   margin-bottom: 0;
+  margin-right: 1em;
+}
+
+.nav-masthead {
+  align-items: center;
 }
 
 .nav-masthead .nav-link {
@@ -99,15 +112,6 @@ body {
 
 .nav-masthead .nav-link.active {
   color: $body-color;
-}
-
-@media (min-width: 48em) {
-  .masthead-brand {
-    float: left;
-  }
-  .nav-masthead {
-    float: right;
-  }
 }
 
 

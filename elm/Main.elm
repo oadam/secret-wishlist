@@ -3,7 +3,7 @@ module Main exposing (main)
 import Api exposing (Present, PresentId, Token, User, UserId)
 import Browser
 import Help
-import Html exposing (Html, a, br, button, div, footer, h1, h3, header, main_, nav, p, span, text)
+import Html exposing (Html, a, u, br, button, div, footer, h1, h3, header, main_, nav, p, span, text)
 import Html.Attributes exposing (attribute, class, classList, hidden, href)
 import Html.Events exposing (onClick)
 import Pages.Login as Login
@@ -114,8 +114,8 @@ viewLogout page =
 
         Just s ->
             [ nav [ class "nav nav-masthead justify-content-center" ]
-                [ span [ class "nav-link active disabled" ] [ text s.logged_user.name ]
-                , button [ class "nav-link btn", onClick Logout ]
+                [ span [] [ span [class "text-muted"] [text "connecté en tant que "], span [] [ text s.logged_user.name] ]
+                , button [ class "btn", onClick Logout ]
                     [ text "Déconnexion" ]
                 ]
             ]
