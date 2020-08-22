@@ -24,37 +24,33 @@ type State
     | ShowPresents (List Present)
 
 
-type Model msg
+type Model
     = Model
         { session : Session
         , user : User
         , state : State
-        , wishListMsg : Msg -> msg
-        , editPresentMessage : Present -> msg
         , pendingModifications : List PendingModification
         }
 
 
-init : Session -> User -> List PendingModification -> (Msg -> msg) -> (Present -> msg) -> ( Model msg, Cmd msg )
-init session user pendingModifications wishListMsg editPresentMessage =
+init : Session -> User -> List PendingModification -> ( Model, Cmd Msg )
+init session user pendingModifications =
     ( Model
         { session = session
         , user = user
         , state = Loading
-        , wishListMsg = wishListMsg
-        , editPresentMessage = editPresentMessage
         , pendingModifications = pendingModifications
         }
-    , Api.getPresents session.token user.user_id (wishListMsg << GotPresents)
+    , Api.getPresents session.token user.user_id GotPresents
     )
 
 
-getSession : Model msg -> Session
+getSession : Model -> Session
 getSession (Model model) =
     model.session
 
 
-update : Msg -> Model msg -> ( Model msg, Cmd msg )
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg (Model model) =
     case msg of
         GotPresents (Err _) ->
@@ -69,7 +65,7 @@ update msg (Model model) =
 
         UpdatePresent present ->
             ( Model { model | state = replacePresent model.state present }
-            , Api.updatePresent model.session.token present (model.wishListMsg << GotUpdatedPresent)
+            , Api.updatePresent model.session.token present GotUpdatedPresent
             )
 
         GotUpdatedPresent (Err _) ->
@@ -90,7 +86,7 @@ update msg (Model model) =
             in
             case user of
                 Just u ->
-                    init model.session u model.pendingModifications model.wishListMsg model.editPresentMessage
+                    init model.session u model.pendingModifications
 
                 Nothing ->
                     ( Model model, Cmd.none )
@@ -116,12 +112,12 @@ replacePresent state present =
             state
 
 
-fontawesome : String -> Html msg
+fontawesome : String -> Html Msg
 fontawesome icon =
     i [ class ("fa fa-" ++ icon), attribute "aria-hidden" "true" ] []
 
 
-viewPresent : Model msg -> Present -> Html msg
+viewPresent : Model -> Present -> Html Msg
 viewPresent (Model model) present =
     let
         offered =
@@ -143,18 +139,18 @@ viewPresent (Model model) present =
                 , button
                     [ class "btn"
                     , hidden offered
-                    , onClick <| model.wishListMsg <| UpdatePresent { present | offeredBy = Just model.session.logged_user.user_id }
+                    , onClick <| UpdatePresent { present | offeredBy = Just model.session.logged_user.user_id }
                     ]
                     [ fontawesome "check-square-o", text " rayer" ]
                 , button
                     [ class "btn"
                     , hidden (not offered)
-                    , onClick <| model.wishListMsg <| UpdatePresent { present | offeredBy = Nothing }
+                    , onClick <| UpdatePresent { present | offeredBy = Nothing }
                     ]
                     [ fontawesome "square-o", text " dé-rayer" ]
                 , button
                     [ class "btn text-danger"
-                    , onClick <| model.wishListMsg <| UpdatePresent { present | deletedBy = Just model.session.logged_user.user_id }
+                    , onClick <| UpdatePresent { present | deletedBy = Just model.session.logged_user.user_id }
                     ]
                     [ fontawesome "trash", text " supprimer" ]
                 ]
@@ -162,7 +158,7 @@ viewPresent (Model model) present =
         ]
 
 
-viewPresents : Model msg -> List (Html msg)
+viewPresents : Model -> List (Html Msg)
 viewPresents (Model model) =
     case model.state of
         Loading ->
@@ -175,21 +171,21 @@ viewPresents (Model model) =
             List.map (viewPresent (Model model)) presents
 
 
-userOption : Model msg -> User -> Html msg
+userOption : Model -> User -> Html Msg
 userOption (Model model) user =
     option [ selected (model.user.user_id == user.user_id), value (userIdToString user.user_id) ] [ text user.name ]
 
 
-listSelect : Model msg -> Html msg
+listSelect : Model -> Html Msg
 listSelect (Model model) =
     let
         options =
             List.map (userOption (Model model)) model.session.users
     in
-    select [ id "list-picker", class "form-select", onInput (model.wishListMsg << ChangeList << userIdFromString) ] options
+    select [ id "list-picker", class "form-select", onInput (ChangeList << userIdFromString) ] options
 
 
-view : Model msg -> List (Html msg)
+view : Model -> List (Html Msg)
 view (Model model) =
     nav [ attribute "aria-label" "breadcrumb" ]
         [ ol [ class "breadcrumb" ]

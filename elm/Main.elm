@@ -14,7 +14,7 @@ import String.Interpolate exposing (interpolate)
 
 type Page
     = Login Login.Model
-    | WishList (WishList.Model Msg)
+    | WishList WishList.Model
 
 
 type alias Model =
@@ -60,10 +60,10 @@ update message model =
                 Just session ->
                     let
                         ( wiModel, wiCmd ) =
-                            WishList.init session session.logged_user [] WishListMsg EditPresentMsg
+                            WishList.init session session.logged_user []
                     in
                     ( { model | page = WishList wiModel }
-                    , wiCmd
+                    , Cmd.map WishListMsg wiCmd
                     )
 
         ( WishListMsg msg, WishList wishList ) ->
@@ -71,7 +71,7 @@ update message model =
                 ( wishListModel, cmd ) =
                     WishList.update msg wishList
             in
-            ( { model | page = WishList wishListModel }, cmd )
+            ( { model | page = WishList wishListModel }, Cmd.map WishListMsg cmd )
 
         ( Logout, _ ) ->
             init ()
@@ -99,7 +99,7 @@ viewMain page =
                    ]
 
         WishList wishList ->
-            WishList.view wishList
+            List.map (Html.map WishListMsg) (WishList.view wishList)
 
 
 viewLogout : Page -> List (Html Msg)
