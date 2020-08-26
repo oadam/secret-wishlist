@@ -2,8 +2,8 @@ module Pages.WishList exposing (Model, Msg, getSession, init, update, view)
 
 import Api exposing (Present, PresentId, Token, User, UserId, userIdFromString, userIdToString)
 import Html exposing (..)
-import Html.Attributes exposing (attribute, class, classList, for, hidden, id, placeholder, selected, type_, value)
-import Html.Events exposing (onClick, onInput)
+import Html.Attributes exposing (required, attribute, class, classList, disabled, for, hidden, id, placeholder, selected, type_, value)
+import Html.Events exposing (onClick, onInput, onSubmit)
 import Http
 import PendingModification exposing (PendingModification)
 import Session exposing (Session)
@@ -19,13 +19,14 @@ type Msg
     | GotUpdatedPresent (Result Http.Error Present)
     | UpdateEditionTitle String
     | UpdateEditionDescription String
+    | SubmitEdition
 
 
 type State
     = Loading
     | Fail
     | ShowingPresents (List Present)
-    | EditingPresent (List Present) { id : Maybe PresentId, title : String, description : String }
+    | EditingPresent (List Present) { present : Maybe Present, title : String, description : String, hasChanges: Bool }
 
 
 type Model
@@ -70,7 +71,9 @@ update msg (Model model) =
         EditPresent present ->
             case model.state of
                 ShowingPresents presents ->
-                    ( Model { model | state = EditingPresent presents { id = Just present.id, title = present.title, description = present.description } }
+                    ( Model { model | state = EditingPresent presents {
+                        present = Just present
+                        , title = present.title, description = present.description, hasChanges = False } }
                     , Cmd.none
                     )
 
@@ -78,12 +81,12 @@ update msg (Model model) =
                     ( Model model, Cmd.none )
 
         UpdatePresent present ->
-            replacePresentIfLoaded (Model model) present
+            replacePresentIfLoaded True (Model model) present
 
         UpdateEditionTitle title ->
             case model.state of
                 EditingPresent list edition ->
-                    ( Model { model | state = EditingPresent list { edition | title = title } }, Cmd.none )
+                    ( Model { model | state = EditingPresent list { edition | title = title, hasChanges = True } }, Cmd.none )
 
                 _ ->
                     ( Model model, Cmd.none )
@@ -91,7 +94,19 @@ update msg (Model model) =
         UpdateEditionDescription desc ->
             case model.state of
                 EditingPresent list edition ->
-                    ( Model { model | state = EditingPresent list { edition | description = desc } }, Cmd.none )
+                    ( Model { model | state = EditingPresent list { edition | description = desc, hasChanges = True } }, Cmd.none )
+
+                _ ->
+                    ( Model model, Cmd.none )
+        SubmitEdition ->
+            case model.state of
+                EditingPresent list edition ->
+                    case edition.present of
+                       Nothing ->
+                        ( Model model, Cmd.none )
+                       Just present ->
+                        replacePresentIfLoaded True (Model model) {present|title=edition.title, description=edition.description}
+
 
                 _ ->
                     ( Model model, Cmd.none )
@@ -100,7 +115,7 @@ update msg (Model model) =
             ( Model model, Cmd.none )
 
         GotUpdatedPresent (Ok present) ->
-            replacePresentIfLoaded (Model model) present
+            replacePresentIfLoaded False (Model model) present
 
         ChangeList Nothing ->
             ( Model model, Cmd.none )
@@ -118,8 +133,8 @@ update msg (Model model) =
                     ( Model model, Cmd.none )
 
 
-replacePresent : Model -> List Present -> Present -> ( Model, Cmd Msg )
-replacePresent (Model model) presents present =
+replacePresent : Bool -> Model -> List Present -> Present -> ( Model, Cmd Msg )
+replacePresent postToServer (Model model) presents present =
     ( Model
         { model
             | state =
@@ -135,18 +150,18 @@ replacePresent (Model model) presents present =
                         presents
                     )
         }
-    , Api.updatePresent model.session.token present GotUpdatedPresent
+    , if postToServer then Api.updatePresent model.session.token present GotUpdatedPresent else Cmd.none
     )
 
 
-replacePresentIfLoaded : Model -> Present -> ( Model, Cmd Msg )
-replacePresentIfLoaded (Model model) present =
+replacePresentIfLoaded : Bool -> Model -> Present -> ( Model, Cmd Msg )
+replacePresentIfLoaded postToServer (Model model) present =
     case model.state of
         ShowingPresents presents ->
-            replacePresent (Model model) presents present
+            replacePresent postToServer (Model model) presents present
 
         EditingPresent presents _ ->
-            replacePresent (Model model) presents present
+            replacePresent postToServer (Model model) presents present
 
         _ ->
             ( Model model, Cmd.none )
@@ -212,15 +227,17 @@ viewPresents (Model model) =
             List.map (viewPresent (Model model)) presents
 
         EditingPresent presents edition ->
-            [ form []
+            [ form [ onSubmit SubmitEdition ]
                 [ div [ class "form-group" ]
                     [ label [ attribute "for" "present-title" ] [ text "Titre" ]
-                    , input [ id "present-title", class "form-control", value edition.title, onInput UpdateEditionTitle ] []
+                    , input [ id "present-title", class "form-control", required True, value edition.title, onInput UpdateEditionTitle ] []
                     ]
                 , div [ class "form-group" ]
                     [ label [ attribute "for" "present-description" ] [ text "Description" ]
-                    , textarea [ id "present-description", class "form-control", onInput UpdateEditionDescription ] [ text edition.description ]
+                    , textarea [ id "present-description", class "form-control", required True, value edition.description, onInput UpdateEditionDescription ] []
                     ]
+                , button [ disabled (not edition.hasChanges || String.isEmpty edition.title || String.isEmpty edition.description), class "btn btn-lg btn-primary btn-block", type_ "submit" ]
+                    [ text "Sauvegarder" ]
                 ]
             ]
 
