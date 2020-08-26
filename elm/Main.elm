@@ -164,7 +164,7 @@ view { page, help } =
                         [ div [ class "inner" ]
                             [ p []
                                 [ text "Créé par Olivier Adam. Code source sur "
-                                , a [ href "https://www.github.com/oadam/secret-wishlist/" ]
+                                , a [ href "https://www.github.com/oadam/secret-wishlist" ]
                                     [ text "Github" ]
                                 ]
                             ]
