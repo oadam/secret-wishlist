@@ -2,7 +2,7 @@ module Pages.WishList exposing (Model, Msg, getSession, init, update, view)
 
 import Api exposing (Present, PresentId, Token, User, UserId, userIdFromString, userIdToString)
 import Html exposing (..)
-import Html.Attributes exposing (required, attribute, class, classList, disabled, for, hidden, id, placeholder, selected, type_, value)
+import Html.Attributes exposing (attribute, class, classList, disabled, for, hidden, id, placeholder, required, selected, type_, value)
 import Html.Events exposing (onClick, onInput, onSubmit)
 import Http
 import PendingModification exposing (PendingModification)
@@ -15,6 +15,7 @@ type Msg
     = GotPresents (Result Http.Error (List Present))
     | ChangeList (Maybe UserId)
     | UpdatePresent Present
+    | AddPresent
     | EditPresent Present
     | GotUpdatedPresent (Result Http.Error Present)
     | UpdateEditionTitle String
@@ -26,7 +27,14 @@ type State
     = Loading
     | Fail
     | ShowingPresents (List Present)
-    | EditingPresent (List Present) { present : Maybe Present, title : String, description : String, hasChanges: Bool }
+    | EditingPresent
+        (List Present)
+        { present : Maybe Present
+        , title : String
+        , description : String
+        , hasChanges : Bool
+        , saving : Bool
+        }
 
 
 type Model
@@ -68,12 +76,40 @@ update msg (Model model) =
             , Cmd.none
             )
 
+        AddPresent ->
+            case model.state of
+                ShowingPresents presents ->
+                    ( Model
+                        { model
+                            | state =
+                                EditingPresent presents
+                                    { present = Nothing
+                                    , title = ""
+                                    , description = ""
+                                    , hasChanges = False
+                                    , saving = False
+                                    }
+                        }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( Model model, Cmd.none )
+
         EditPresent present ->
             case model.state of
                 ShowingPresents presents ->
-                    ( Model { model | state = EditingPresent presents {
-                        present = Just present
-                        , title = present.title, description = present.description, hasChanges = False } }
+                    ( Model
+                        { model
+                            | state =
+                                EditingPresent presents
+                                    { present = Just present
+                                    , title = present.title
+                                    , description = present.description
+                                    , hasChanges = False
+                                    , saving = False
+                                    }
+                        }
                     , Cmd.none
                     )
 
@@ -98,15 +134,24 @@ update msg (Model model) =
 
                 _ ->
                     ( Model model, Cmd.none )
+
         SubmitEdition ->
             case model.state of
                 EditingPresent list edition ->
                     case edition.present of
-                       Nothing ->
-                        ( Model model, Cmd.none )
-                       Just present ->
-                        replacePresentIfLoaded True (Model model) {present|title=edition.title, description=edition.description}
+                        Nothing ->
+                            ( Model { model | state = EditingPresent list { edition | saving = True } }
+                            , Api.addPresent model.session.token
+                                { createdBy = model.session.logged_user.user_id
+                                , description = edition.description
+                                , title = edition.title
+                                , to = model.user.user_id
+                                }
+                                GotUpdatedPresent
+                            )
 
+                        Just present ->
+                            replacePresentIfLoaded True (Model model) { present | title = edition.title, description = edition.description }
 
                 _ ->
                     ( Model model, Cmd.none )
@@ -139,18 +184,18 @@ replacePresent postToServer (Model model) presents present =
         { model
             | state =
                 ShowingPresents
-                    (List.map
-                        (\p ->
-                            if p.id == present.id then
-                                present
-
-                            else
-                                p
-                        )
-                        presents
+                    -- filter + prepend works even for new presents !
+                    (present
+                        :: List.filter
+                            (\p -> p.id /= present.id)
+                            presents
                     )
         }
-    , if postToServer then Api.updatePresent model.session.token present GotUpdatedPresent else Cmd.none
+    , if postToServer then
+        Api.updatePresent model.session.token present GotUpdatedPresent
+
+      else
+        Cmd.none
     )
 
 
@@ -178,10 +223,8 @@ viewPresent (Model model) present =
         offered =
             present.offeredBy /= Nothing
 
-        deleted =
-            present.deletedBy /= Nothing
     in
-    div [ class "card present", hidden deleted, classList [ ( "offered", present.offeredBy /= Nothing ) ] ]
+    div [ class "card present", classList [ ( "offered", present.offeredBy /= Nothing ) ] ]
         [ div [ class "card-body" ]
             [ h5 [ class "card-title" ] [ text present.title ]
             , div [ class "card-text" ] (textHtml present.description)
@@ -214,32 +257,21 @@ viewPresent (Model model) present =
         ]
 
 
-viewPresents : Model -> List (Html Msg)
-viewPresents (Model model) =
-    case model.state of
-        Loading ->
-            [ p [] [ text "chargement en cours..." ] ]
-
-        Fail ->
-            [ div [ class "alert alert-danger" ] [ text "une erreur s'est produite sur le serveur" ] ]
-
-        ShowingPresents presents ->
-            List.map (viewPresent (Model model)) presents
-
-        EditingPresent presents edition ->
-            [ form [ onSubmit SubmitEdition ]
-                [ div [ class "form-group" ]
-                    [ label [ attribute "for" "present-title" ] [ text "Titre" ]
-                    , input [ id "present-title", class "form-control", required True, value edition.title, onInput UpdateEditionTitle ] []
-                    ]
-                , div [ class "form-group" ]
-                    [ label [ attribute "for" "present-description" ] [ text "Description" ]
-                    , textarea [ id "present-description", class "form-control", required True, value edition.description, onInput UpdateEditionDescription ] []
-                    ]
-                , button [ disabled (not edition.hasChanges || String.isEmpty edition.title || String.isEmpty edition.description), class "btn btn-lg btn-primary btn-block", type_ "submit" ]
-                    [ text "Sauvegarder" ]
-                ]
-            ]
+viewPresents : Model -> List Present -> List (Html Msg)
+viewPresents (Model model) presents =
+    let
+        me = model.session.logged_user.user_id
+        mine = me == model.user.user_id
+        filteredPresents =
+            presents
+            |> List.filter (\p -> p.deletedBy == Nothing && (not mine || p.createdBy == me))
+            |> List.map (\p -> {p| offeredBy = if mine && p.offeredBy /= Just me then Nothing else p.offeredBy})
+        listHtml =
+            if List.isEmpty filteredPresents
+            then [ div [ class "alert alert-default" ] [ b [] [text "Cette liste est vide !"], br [] [], text "Vous pouvez ajouter un cadeau à l'aide du bouton ci-dessous." ]]
+            else List.map (viewPresent (Model model))  filteredPresents
+    in
+        listHtml ++ [button [ id "add-present-fab", onClick AddPresent ] [ text "+" ]]
 
 
 userOption : Model -> User -> Html Msg
@@ -287,10 +319,37 @@ breadcrumbEnd (Model model) =
 
 view : Model -> List (Html Msg)
 view (Model model) =
-    nav [ attribute "aria-label" "breadcrumb" ]
-        [ ol [ class "breadcrumb" ]
-            (li [ class "breadcrumb-item" ] [ text "Secret Wishlist" ]
-                :: breadcrumbEnd (Model model)
-            )
-        ]
-        :: viewPresents (Model model)
+    let
+        rest =
+            case model.state of
+                Loading ->
+                    [ p [] [ text "chargement en cours..." ] ]
+
+                Fail ->
+                    [ div [ class "alert alert-danger" ] [ text "une erreur s'est produite sur le serveur" ] ]
+
+                ShowingPresents presents ->
+                    viewPresents (Model model) presents
+
+                EditingPresent presents edition ->
+                    [ form [ disabled (not edition.hasChanges || edition.saving || String.isEmpty edition.title || String.isEmpty edition.description), onSubmit SubmitEdition ]
+                        [ div [ class "form-group" ]
+                            [ label [ attribute "for" "present-title" ] [ text "Titre" ]
+                            , input [ id "present-title", class "form-control", required True, value edition.title, onInput UpdateEditionTitle ] []
+                            ]
+                        , div [ class "form-group" ]
+                            [ label [ attribute "for" "present-description" ] [ text "Description" ]
+                            , textarea [ id "present-description", class "form-control", required True, value edition.description, onInput UpdateEditionDescription ] []
+                            ]
+                        , button [ class "btn btn-lg btn-primary btn-block", type_ "submit" ]
+                            [ text "Sauvegarder" ]
+                        ]
+                    ]
+    in
+        nav [ attribute "aria-label" "breadcrumb" ]
+            [ ol [ class "breadcrumb" ]
+                (li [ class "breadcrumb-item" ] [ text "Secret Wishlist" ]
+                    :: breadcrumbEnd (Model model)
+                )
+            ]
+            :: rest

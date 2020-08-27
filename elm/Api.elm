@@ -1,4 +1,4 @@
-module Api exposing (Present, PresentId, Token, User, UserId, getPresents, updatePresent, getUsers, login, userIdFromString, userIdToString)
+module Api exposing (Present, PresentId, Token, User, UserId, getPresents, addPresent, updatePresent, getUsers, login, userIdFromString, userIdToString)
 
 import Http
 import Json.Decode exposing (Decoder, field, float, int, list, map, map2, map8, nullable, string)
@@ -111,6 +111,25 @@ getPresents (Token demo token) user_id toMsg =
                 Http.expectJson toMsg (list presentDecoder)
             }
 
+addPresent : Token -> {title: String, description: String, createdBy: UserId, to: UserId} -> (Result Http.Error Present -> msg) -> Cmd msg
+addPresent (Token demo token) present toMsg =
+    if demo then
+        mockHttpGet toMsg { id = PresentId 1000
+      , to = present.to
+      , title = present.title
+      , description = present.description
+      , createdBy = present.createdBy
+      , offeredBy = Nothing
+      , deletedBy = Nothing
+      , sort = 0
+    }
+
+    else
+        Http.get
+            { url = "/api/login/"
+            , expect =
+                Http.expectJson toMsg presentDecoder
+            }
 updatePresent : Token -> Present -> (Result Http.Error Present -> msg) -> Cmd msg
 updatePresent (Token demo token) present toMsg =
     if demo then
