@@ -13,6 +13,7 @@ jobs:
                         - name: build
                           run: parcel build index.html
                         - uses: peaceiris/actions-gh-pages@v3
+                          if: ${{ github.ref == 'refs/heads/main' }}
                           with:
                                   deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
                                   publish_dir: ./dist
